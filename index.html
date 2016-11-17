@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style type="text/css">
+        .box{
+            margin: 5px;
+            border: 1px solid #ccc;
+        }
+        .apple{
+            position: absolute;
+            cursor: pointer;
+        }
+        #title{
+            text-align: center;
+            color: cornflowerblue;
+        }
+        .rbox{
+            width:100%;
+            background-color: lightcyan;
+        }
+        body{background-color: #9fffeb;}
+        #container{width: 100%;}
+        #foot{
+            width:95%;
+            background-color: #999;
+            clear: left;
+            text-align: center;
+            padding-bottom: 3px;
+            padding-top: 3px;
+        }
+        #leftbox{
+            width: 67%;
+            height: 450px;
+            float: left;
+            background-color: cornsilk;
+            position: relative;
+            overflow: hidden;
+        }
+        #rightbox{
+            width: 27%;
+            height: 450px;
+            float: left;
+            background-color: cadetblue;
+        }
+        #span_restTime{color:fuchsia;}
+        #span_saveApple{color:darkcyan;}
+    </style>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+    <title>拯救小苹果</title>
+    <script>
+        /*
+        游戏简介：
+            在左侧，苹果会从上往下掉落，目标就是通过鼠标拖拽苹果把其移动到右侧框中，游戏时间到后，
+            右侧的苹果越多，则得分越多
+        * */
+        $(document).ready(function(){
+            $(".rbox").height($("#rightbox").height()-30);//设置右侧主框的高度
+            $("#btn_start").bind("click",function(){
+                if (restTime==-1){
+                    startGame();
+                }else{
+                    alert("游戏已经开始");
+                }
+            });
+        });
+        window.onload=function(){
+            var rtbox=document.getElementById("rtbox");
+            rtbox.ondragover=function(e){
+                e.preventDefault();
+            }
+            rtbox.ondrop=function(e){
+                e.preventDefault();
+                var curImg=document.getElementById(e.dataTransfer.getData("ImgId"));
+                curImg.style.width="25px";curImg.style.float="left";curImg.style.position="static";curImg.style.border="none";
+                rtbox.appendChild(curImg);
+                dropedNum++;
+                $("#span_saveApple").text(dropedNum);
+            }
+
+            //下面是播放器的获取及初始化
+            ctrBkMusic=document.getElementById('bkMc');
+        };
+        var allTime=120;//游戏的总时间（暂且设为2分钟）
+        var downNum=1;//一次下落苹果的个数(初始值)
+        var aminWid= 20,amaxWid=70;//定义游戏中下落苹果的最小宽度和最大宽度
+        var ainitTop=-80;//刚开始苹果的初始top
+        var adownTime=15000;//苹果下落的时间（单位毫秒）（初始值）
+        var addStep=800;//每次加速的时间步长（单位毫秒）
+        var restTime=-1;//游戏当前剩余时间（其实起到计时作用）(初始值-1，表示游戏未开始)
+        var leftBoxWidth;//左侧游戏区的宽度
+        var appleEndTop;//苹果移动到最底部的top值
+        var productAppleNum=0;//已经产生苹果个数（初始值）
+        var dropedNum=0;//成功拖放苹果的个数(初始值)
+
+        var ctrBkMusic;//音乐播放控制器
+
+        function startGame(){//游戏初始化，并开始
+            restTime=allTime;//初始化当前剩余时间
+            downNum=2;adownTime=15000;productAppleNum=0;dropedNum=0;
+            $("#span_saveApple").text(dropedNum);
+            $("#span_restTime").text(restTime);
+            $("#leftbox").html('');$(".rbox").empty();//清空左右框中的苹果
+            leftBoxWidth=$("#leftbox").width();//计算左侧框的宽度
+            var lbh=$("#leftbox").height();
+            appleEndTop=lbh+Math.round(lbh*0.1);//设置苹果移动到最底部的top值
+            loop();//启动游戏循环
+            ctrBkMusic.startTime=0;
+            ctrBkMusic.volume=0.4;//初始音量
+            ctrBkMusic.play();
+        }
+        function loop(){//游戏主循环，每隔1秒执行一次
+            if (restTime>0){
+                setTimeout("loop()",1000);
+            }
+            if (restTime==0){//游戏结束
+                gameEnd();
+                return;
+            }
+            if (restTime%10==0){//每隔10秒加速一次
+                if (adownTime>addStep+1000){
+                    adownTime=adownTime-addStep;
+                }
+                if (restTime%20==0){
+                    if (ctrBkMusic.volume<1){
+                        ctrBkMusic.volume+=0.1;//每20秒音量增加
+                    }
+                }
+            }
+            $("#span_restTime").text(restTime);//显示剩余时间
+            var apWid,crImg;
+            for (var i=0; i<downNum; i++){//依次产生一些苹果下落
+                apWid=Math.floor(Math.random()*(amaxWid-aminWid)+aminWid);//随机设置苹果的宽度
+                var apLef=Math.floor(Math.random()*(leftBoxWidth-apWid));//设置苹果的left
+                crImg=$("<img>").addClass("apple").attr("src","apple1.png").attr("id","apNum"+productAppleNum)
+                        .outerWidth(apWid)
+                        .css({"left":apLef+"px","top":ainitTop+"px"})
+                        .animate({top:appleEndTop+'px'},adownTime,function(){$(this).remove();});
+                $("#leftbox").append(crImg);//将设置好的苹果对象添加好左侧框中
+                var curIm=document.getElementById("apNum"+productAppleNum);
+                curIm.ondragstart=imgDragStart;//添加拖动函数
+                productAppleNum++;
+            }
+            restTime--;
+        }
+        function gameEnd(){//游戏结束，时间已到
+            restTime=-1;
+            ctrBkMusic.pause();//暂停音乐播放
+            alert("成功拯救了"+$("#span_saveApple").text()+"个苹果！！\n\n点开始按钮可以重新开始！")
+        }
+        function imgDragStart(e){
+            this.style.border="2px solid #8ce";
+            $(this).stop();//停止动画
+            e.dataTransfer.setData('ImgId',this.id);
+        }
+    </script>
+</head>
+<body>
+<audio id="bkMc" src="bkMusic.mp3" preload loop="loop"></audio>
+<div id="container">
+    <h3 id="title"> 拯救小苹果</h3>
+    <div class="box" id="leftbox"></div>
+    <div class="box" id="rightbox">
+        <div class="rbox" id="rtbox"></div>
+        <div style="width: 100%;height: 30px;background-color: #cccccc;padding-top:5px;">
+            <h3 style="margin-top: 0px;">剩余时间：<span id="span_restTime"></span>&nbsp;&nbsp;&nbsp;&nbsp;
+                获救苹果：<span id="span_saveApple">0</span>个</h3>
+        </div>
+    </div>
+    <div style="background-color: chocolate;position: static;clear: left;">
+        <div style="float:left;width:25%;">
+            <input style="display: block;margin:0 auto;" id="btn_start" type="image" src="btn_start.png" width="50"></div>
+        <div style="float:left;width: 65%;font-size: 25px;">
+            <strong>游戏玩法：</strong>拖动左侧的苹果到右侧框中，限时2分
+        </div>
+    </div>
+</div>
+<div id="foot">
+    李飞制作
+</div>
+</body>
+</html>
